@@ -1,72 +1,134 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_app_and_api_handeling_process/providers/counter_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+class Home extends StatefulWidget {
+  Home({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final counterProvider =
-        StateNotifierProvider<Counter, int>((ref) => Counter());
-    return Scaffold(
-        appBar: AppBar(
-          title: Text("My Home Screen"),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "This is Counter",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.blue,
-                ),
-              ),
-              Consumer(
-                builder: (context, ref, child) {
-                  final counter = ref.watch(counterProvider);
-                  return Text(
-                    counter.toString(),
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.blue,
-                    ),
-                  );
-                },
-              )
-            ],
-          ),
-        ),
-        floatingActionButton: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            FloatingActionButton(
-              onPressed: () {
-                ref.read(counterProvider.notifier).decrement();
-              },
-              backgroundColor: Color.fromARGB(255, 43, 15, 46),
-              child: Icon(
-                Icons.remove,
-                color: Colors.white,
-                size: 38,
-              ),
+  State<Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<Home> {
+  final TextEditingController _controller = TextEditingController(text: "");
+  TextEditingController _editController = TextEditingController();
+
+  List<String> todoList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodos();
+  }
+
+  // Load the saved to-do list from SharedPreferences
+  _loadTodos() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      todoList = prefs.getStringList('todos') ?? [];
+    });
+  }
+
+  // Save the to-do list to SharedPreferences
+  _saveTodos() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setStringList('todos', todoList);
+  }
+
+  // Add a new to-do
+  _addTodo() {
+    if (_controller.text.isNotEmpty) {
+      setState(() {
+        todoList.add(_controller.text);
+        _saveTodos();
+        _controller.clear();
+      });
+    }
+  }
+
+  // Remove a to-do by index
+  _removeTodoAt(int index) {
+    setState(() {
+      todoList.removeAt(index);
+      _saveTodos();
+    });
+  }
+
+  // Function to edit a to-do
+  _editTodoAt(int index) {
+    _editController.text = todoList[index];
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit To-Do'),
+          content: TextField(
+            controller: _editController,
+            decoration: InputDecoration(
+              hintText: 'Enter new to-do',
             ),
-            FloatingActionButton(
+          ),
+          actions: [
+            TextButton(
               onPressed: () {
-                ref.read(counterProvider.notifier).increment();
+                Navigator.of(context).pop();
               },
-              backgroundColor: const Color.fromARGB(255, 18, 51, 79),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 38,
-              ),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  todoList[index] = _editController.text;
+                  _saveTodos();
+                });
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
             ),
           ],
-        ));
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('To-Do List'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextFormField(
+              controller: _controller,
+              decoration: InputDecoration(
+                labelText: 'Enter To-Do',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _addTodo,
+            child: Text('Add To-Do'),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: todoList.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(todoList[index]),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () => _removeTodoAt(index),
+                  ),
+                  onLongPress: () => _editTodoAt(index), // Edit on long press
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

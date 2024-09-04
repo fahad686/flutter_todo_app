@@ -1,6 +1,6 @@
 {
-    "name": "to_do_app_and_api_handeling_process",
-    "short_name": "to_do_app_and_api_handeling_process",
+    "name": "to_do_app",
+    "short_name": "to_do_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,81 +1,138 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:to_do_app_and_api_handeling_process/model/to_do_model.dart';
 
-import '../providers/to_do_provider.dart';
+import '../model/todo_model.dart';
+import '../view_model/todo_view_model.dart';
 
 class TodoScreen extends ConsumerWidget {
-  TodoScreen({super.key});
-  final TextEditingController inputcontroller = TextEditingController(text: "");
+  final TextEditingController _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final todoViewModel = ref.watch(todoViewModelProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("ToDo App"),
+        title: Text('To-Do'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 12, right: 12),
-              child: TextFormField(
-                  controller: inputcontroller,
-                  decoration: InputDecoration(
-                    hintText: "Add TO DO ",
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextFormField(
+              maxLines: null,
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: 'Enter To-Do',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                suffixIcon: Container(
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(31, 0, 0, 0),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.add,
+                      size: 30,
+                      color: Colors.white,
+                    ),
+                    onPressed: () {
+                      if (_controller.text.isNotEmpty) {
+                        todoViewModel.addTodo(_controller.text);
+                        _controller.clear();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              onFieldSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  todoViewModel.addTodo(value);
+                  _controller.clear();
+                }
+              },
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: todoViewModel.todos.length,
+              itemBuilder: (context, index) {
+                final todo = todoViewModel.todos[index];
+                return ListTile(
+                  title: Text(todo.description),
+                  subtitle: Text(
+                    todo.id,
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold),
+                  ),
+                  trailing: Container(
+                    width: 99,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.edit,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () =>
+                              _showEditDialog(context, todoViewModel, todo),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.delete,
+                            color: Colors.red,
+                          ),
+                          onPressed: () =>
+                              todoViewModel.removeTodoById(todo.id),
+                        ),
+                      ],
                     ),
                   ),
-                  onFieldSubmitted: (value) => {
-                        ref.read(todoListProvider.notifier).addToDO(
-                              TodoModel(
-                                  id: Random().nextInt(9999),
-                                  description: value,
-                                  Completed: false),
-                            ),
-                        showSnackBar(context),
-                        inputcontroller.text = "",
-                      }),
+                );
+              },
             ),
-            SizedBox(
-              height: 20,
-            ),
-            Consumer(builder: (context, WidgetRef ref, child) {
-              final toDo = ref.watch(todoListProvider);
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: BouncingScrollPhysics(),
-                itemCount: toDo.todoList.length,
-                itemBuilder: (context, index) => ListTile(
-                  title: Text(
-                    toDo.todoList[index].description,
-                    style: toDo.todoList[index].Completed
-                        ? TextStyle(decoration: TextDecoration.lineThrough)
-                        : null,
-                  ),
-                  trailing: Checkbox(
-                      value: toDo.todoList[index].Completed,
-                      onChanged: (value) => ref
-                          .read(todoListProvider.notifier)
-                          .toDoTogel(toDo.todoList[index].id, value!)),
-                ),
-              );
-            }),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
 
-showSnackBar(BuildContext context) {
-  return ScaffoldMessenger.of(context).showSnackBar(snackBar);
-}
+  void _showEditDialog(
+      BuildContext context, TodoViewModel todoViewModel, Todo todo) {
+    final TextEditingController _editController =
+        TextEditingController(text: todo.description);
 
-const snackBar = SnackBar(
-  content: Text("TODO Add Successfully"),
-);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit To-Do'),
+          content: TextField(
+            controller: _editController,
+            decoration: InputDecoration(
+              hintText: 'Enter new to-do',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                todoViewModel.editTodo(todo.id, _editController.text);
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

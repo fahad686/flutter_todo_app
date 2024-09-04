@@ -1,4 +1,4 @@
-package com.example.to_do_app_and_api_handeling_process
+package com.example.to_do_app
 
 import io.flutter.embedding.android.FlutterActivity
 
